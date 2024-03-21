@@ -6,7 +6,7 @@ use std::process::Command;
 #[cfg(doc)]
 use std::process::Output;
 
-#[cfg(all(doc, feature = "utf8-command"))]
+#[cfg(doc)]
 use utf8_command::Utf8Output;
 
 use crate::CommandDisplay;
@@ -72,7 +72,7 @@ impl Display for OutputConversionError {
         write!(
             f,
             "Failed to convert `{}` output: {}",
-            self.command.program(),
+            self.command.program_quoted(),
             self.inner
         )
     }

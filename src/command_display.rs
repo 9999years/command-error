@@ -24,6 +24,24 @@ pub trait CommandDisplay: Display {
     /// );
     /// ```
     fn program(&self) -> Cow<'_, str>;
+
+    /// The command's program name, shell-quoted.
+    ///
+    /// ```
+    /// # use std::process::Command;
+    /// # use command_error::Utf8ProgramAndArgs;
+    /// # use command_error::CommandDisplay;
+    /// let command = Command::new("ooga booga");
+    /// let displayed: Utf8ProgramAndArgs = (&command).into();
+    /// assert_eq!(
+    ///     displayed.program_quoted(),
+    ///     "'ooga booga'",
+    /// );
+    /// ```
+    fn program_quoted(&self) -> Cow<'_, str> {
+        Cow::Owned(shell_words::quote(&self.program()).into_owned())
+    }
+
     /// The command's arguments, decoded as UTF-8.
     ///
     /// ```
@@ -43,10 +61,8 @@ pub trait CommandDisplay: Display {
 
 /// A program name and arguments stored as UTF-8 [`String`]s.
 ///
-/// By default (with the `shell-words` feature enabled), the program name and arguments are
-/// shell-quoted when [`Display`]ed, so that spaces are escaped and the displayed command can
-/// generally be pasted directly into a shell. Otherwise, the program and arguments are formatted
-/// with [`Debug`].
+/// The program name and arguments are shell-quoted when [`Display`]ed, so that spaces are escaped
+/// and the displayed command can generally be pasted directly into a shell.
 ///
 /// ```
 /// # use std::process::Command;
@@ -66,7 +82,6 @@ pub struct Utf8ProgramAndArgs {
     args: Vec<String>,
 }
 
-#[cfg(feature = "shell-words")]
 impl Display for Utf8ProgramAndArgs {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", shell_words::quote(&self.program))?;
@@ -77,20 +92,13 @@ impl Display for Utf8ProgramAndArgs {
     }
 }
 
-#[cfg(not(feature = "shell-words"))]
-impl Display for Utf8ProgramAndArgs {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:?}", &self.program)?;
-        for arg in &self.args {
-            write!(f, " {arg:?}")?;
-        }
-        Ok(())
-    }
-}
-
 impl CommandDisplay for Utf8ProgramAndArgs {
     fn program(&self) -> std::borrow::Cow<'_, str> {
         Cow::Borrowed(&self.program)
+    }
+
+    fn program_quoted(&self) -> Cow<'_, str> {
+        shell_words::quote(&self.program)
     }
 
     fn args(&self) -> Box<(dyn Iterator<Item = Cow<'_, str>> + '_)> {

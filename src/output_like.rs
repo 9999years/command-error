@@ -2,7 +2,6 @@ use std::borrow::Cow;
 use std::process::ExitStatus;
 use std::process::Output;
 
-#[cfg(feature = "utf8-command")]
 use utf8_command::Utf8Output;
 
 /// A command output type.

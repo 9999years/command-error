@@ -102,15 +102,7 @@ impl Debug for OutputError {
 
 impl Display for OutputError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        #[cfg(feature = "shell-words")]
-        write!(
-            f,
-            "`{}` failed: ",
-            shell_words::quote(&self.command.program())
-        )?;
-
-        #[cfg(not(feature = "shell-words"))]
-        write!(f, "`{}` failed: ", self.command.program())?;
+        write!(f, "`{}` failed: ", self.command.program_quoted())?;
 
         match &self.user_error {
             Some(user_error) => {

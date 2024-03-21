@@ -56,12 +56,14 @@ impl Debug for ExecError {
 
 impl Display for ExecError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let program = self.command.program();
-        #[cfg(feature = "shell-words")]
-        let program = shell_words::quote(&program);
         // TODO: Should this contain an additional message like
         // "Is `program` installed and present in your `$PATH`?"
-        write!(f, "Failed to execute `{program}`: {}", self.inner)
+        write!(
+            f,
+            "Failed to execute `{}`: {}",
+            self.command.program_quoted(),
+            self.inner
+        )
     }
 }
 
