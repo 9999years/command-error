@@ -54,8 +54,8 @@ use crate::Utf8ProgramAndArgs;
 /// | [`status_checked_as`][CommandExt::status_checked_as`] | None | Custom, with arbitrary error type |
 /// | [`status_checked`][CommandExt::status_checked`] | None | Non-zero exit codes are errors |
 pub trait CommandExt {
+    /// The error type returned from methods on this trait.
     type Error: From<Error>;
-    type Displayed: for<'a> From<&'a Self> + CommandDisplay;
 
     /// Run a command, capturing its output. `succeeded` is called and returned to determine if the
     /// command succeeded.
@@ -462,7 +462,6 @@ pub trait CommandExt {
 
 impl CommandExt for Command {
     type Error = Error;
-    type Displayed = Utf8ProgramAndArgs;
 
     fn log(&self) -> Result<(), Self::Error> {
         #[cfg(feature = "tracing")]
@@ -485,7 +484,7 @@ impl CommandExt for Command {
         <O as TryFrom<Output>>::Error: Display,
         E: From<Self::Error>,
     {
-        let (output, displayed): (O, Self::Displayed) = get_output_as(self)?;
+        let (output, displayed): (O, Utf8ProgramAndArgs) = get_output_as(self)?;
         succeeded(OutputContext {
             output,
             command: Box::new(displayed),

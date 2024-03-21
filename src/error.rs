@@ -1,14 +1,32 @@
 use std::fmt::Display;
 
+#[cfg(doc)]
+use std::process::Command;
+#[cfg(doc)]
+use std::process::Output;
+
 use crate::output_conversion_error::OutputConversionError;
 use crate::ExecError;
 use crate::OutputError;
 
+#[cfg(doc)]
+use crate::CommandExt;
+
+/// An error produced by a [`Command`] failure.
 #[derive(Debug)]
 #[non_exhaustive]
 pub enum Error {
+    /// An execution failure, when a [`Command`] fails to start.
     Exec(ExecError),
+    /// An output failure, when a [`Command`] fails by returning a non-zero exit code (or in other
+    /// cases, when custom validation logic is supplied in methods like
+    /// [`CommandExt::output_checked_with`]).
+    ///
+    /// Note that this is also raised when non-capturing methods like
+    /// [`CommandExt::status_checked`] fail.
     Output(OutputError),
+    /// An output conversion error, when [`Output`] fails to convert to a custom format as
+    /// requested by methods like [`CommandExt::output_checked_utf8`].
     Conversion(OutputConversionError),
 }
 

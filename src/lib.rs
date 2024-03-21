@@ -45,6 +45,11 @@
 //!
 //! [clippy-config]: https://doc.rust-lang.org/clippy/configuration.html
 
+#![deny(missing_docs)]
+
+#[cfg(doc)]
+use std::process::Command;
+
 mod output_context;
 pub use output_context::OutputContext;
 

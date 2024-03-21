@@ -2,11 +2,64 @@ use std::borrow::Cow;
 use std::fmt::Display;
 use std::process::Command;
 
+/// A [`Command`] that can be [`Display`]ed.
+///
+/// The command's program and arguments are provided as strings, which may contain � U+FFFD
+/// REPLACEMENT CHARACTER if the program or arguments cannot be decoded as UTF-8.
+///
+/// The [`Display`] implementation in [`Utf8ProgramAndArgs`] additionally performs shell quoting on
+/// the command's program and args.
 pub trait CommandDisplay: Display {
+    /// The command's program name, decoded as UTF-8.
+    ///
+    /// ```
+    /// # use std::process::Command;
+    /// # use command_error::Utf8ProgramAndArgs;
+    /// # use command_error::CommandDisplay;
+    /// let command = Command::new("echo");
+    /// let displayed: Utf8ProgramAndArgs = (&command).into();
+    /// assert_eq!(
+    ///     displayed.program(),
+    ///     "echo",
+    /// );
+    /// ```
     fn program(&self) -> Cow<'_, str>;
+    /// The command's arguments, decoded as UTF-8.
+    ///
+    /// ```
+    /// # use std::process::Command;
+    /// # use command_error::Utf8ProgramAndArgs;
+    /// # use command_error::CommandDisplay;
+    /// let mut command = Command::new("echo");
+    /// command.arg("puppy doggy");
+    /// let displayed: Utf8ProgramAndArgs = (&command).into();
+    /// assert_eq!(
+    ///     displayed.args().collect::<Vec<_>>(),
+    ///     vec!["puppy doggy"],
+    /// );
+    /// ```
     fn args(&self) -> Box<dyn Iterator<Item = Cow<'_, str>> + '_>;
 }
 
+/// A program name and arguments stored as UTF-8 [`String`]s.
+///
+/// By default (with the `shell-words` feature enabled), the program name and arguments are
+/// shell-quoted when [`Display`]ed, so that spaces are escaped and the displayed command can
+/// generally be pasted directly into a shell. Otherwise, the program and arguments are formatted
+/// with [`Debug`].
+///
+/// ```
+/// # use std::process::Command;
+/// # use command_error::Utf8ProgramAndArgs;
+/// # use command_error::CommandDisplay;
+/// let mut command = Command::new("echo");
+/// command.arg("puppy doggy");
+/// let displayed: Utf8ProgramAndArgs = (&command).into();
+/// assert_eq!(
+///     displayed.to_string(),
+///     "echo 'puppy doggy'"
+/// );
+/// ```
 #[derive(Debug, Clone)]
 pub struct Utf8ProgramAndArgs {
     program: String,
