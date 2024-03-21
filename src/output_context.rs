@@ -68,8 +68,7 @@ where
         E: Debug + Display + 'static,
     {
         Error::from(
-            OutputError::new(self.command, Box::new(self.output))
-                .with_user_error(Some(Box::new(message))),
+            OutputError::new(self.command, Box::new(self.output)).with_message(Box::new(message)),
         )
     }
 
@@ -79,7 +78,7 @@ where
     {
         let ret = OutputError::new(self.command, Box::new(self.output));
         Error::from(match message {
-            Some(message) => ret.with_user_error(Some(Box::new(message))),
+            Some(message) => ret.with_message(Box::new(message)),
             None => ret,
         })
     }
