@@ -3,7 +3,6 @@ use std::fmt::Display;
 use std::process::ExitStatus;
 use std::process::{Command, Output};
 
-#[cfg(feature = "utf8-command")]
 use utf8_command::Utf8Output;
 
 use crate::CommandDisplay;
@@ -281,7 +280,6 @@ pub trait CommandExt {
     ///     },
     /// );
     /// ```
-    #[cfg(feature = "utf8-command")]
     #[track_caller]
     fn output_checked_utf8(&mut self) -> Result<Utf8Output, Self::Error> {
         self.output_checked_with_utf8(|output| {
@@ -319,7 +317,6 @@ pub trait CommandExt {
     /// assert_eq!(output.stdout, "puppy\n");
     /// assert_eq!(output.status.code(), Some(1));
     /// ```
-    #[cfg(feature = "utf8-command")]
     #[track_caller]
     fn output_checked_with_utf8<E>(
         &mut self,
