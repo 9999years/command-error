@@ -105,6 +105,18 @@ pub(crate) use debug_display::DebugDisplay;
 /// ```
 ///
 /// With the `tracing` feature enabled, commands will be logged before they run.
+///
+/// # Method overview
+///
+/// | Method | Output decoding | Validation |
+/// | ------ | --------------- | ---------- |
+/// | [`output_checked`][CommandExt::output_checked`] | Bytes | Non-zero exit codes are errors |
+/// | [`output_checked_utf8`][CommandExt::output_checked_utf8`] | UTF-8 | Non-zero exit codes are errors |
+/// | [`output_checked_with`][CommandExt::output_checked_with`] | Arbitrary | Custom |
+/// | [`output_checked_with_utf8`][CommandExt::output_checked_with_utf8`] | UTF-8 | Custom |
+/// | [`output_checked_as`][CommandExt::output_checked_as`] | Arbitrary | Custom, with arbitrary error type |
+/// | [`status_checked_as`][CommandExt::status_checked_as`] | None | Custom, with arbitrary error type |
+/// | [`status_checked`][CommandExt::status_checked`] | None | Non-zero exit codes are errors |
 pub trait CommandExt {
     type Error: From<Error>;
     type Displayed: for<'a> From<&'a Self> + CommandDisplay;
