@@ -11,9 +11,16 @@
 }: let
   inherit (inputs) crane advisory-db;
   craneLib = crane.lib.${system};
+  src = lib.cleanSourceWith {
+    src = craneLib.path ../../.;
+    # Keep test data.
+    filter = path: type:
+      lib.hasInfix "/data" path
+      || (craneLib.filterCargoSources path type);
+  };
 
   commonArgs' = {
-    src = craneLib.cleanCargoSource (craneLib.path ../../.);
+    inherit src;
 
     nativeBuildInputs = lib.optionals stdenv.isDarwin [
       # Additional darwin specific inputs can be set here
