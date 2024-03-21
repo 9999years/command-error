@@ -2,11 +2,15 @@ use std::fmt::Debug;
 use std::fmt::Display;
 
 use crate::CommandDisplay;
+#[cfg(doc)]
+use crate::CommandExt;
+#[cfg(doc)]
+use crate::OutputError;
 
 /// An error from failing to execute a command. Produced by [`CommandExt`].
 ///
 /// This is a command that fails to start, rather than a command that exits with a non-zero status
-/// or similar, like [`CommandError`].
+/// or similar, like [`OutputError`].
 pub struct ExecError {
     pub(crate) command: Box<dyn CommandDisplay>,
     pub(crate) inner: std::io::Error,

@@ -5,6 +5,9 @@ use crate::CommandDisplay;
 use crate::DebugDisplay;
 use crate::OutputLike;
 
+#[cfg(doc)]
+use crate::CommandExt;
+
 /// An error from a failed command. Produced by [`CommandExt`].
 pub struct OutputError {
     /// The program and arguments that ran.
@@ -33,7 +36,8 @@ impl Display for OutputError {
         match &self.user_error {
             Some(user_error) => {
                 // `nix` failed: output didn't contain a valid store path
-                write!(f, "{user_error}")?;
+                // exit status 0
+                write!(f, "{user_error}\n{}", self.output.status())?;
             }
             None => {
                 // `nix` failed: exit status: 1
@@ -49,7 +53,7 @@ impl Display for OutputError {
         let stdout = self.output.stdout();
         let stdout = stdout.trim();
         if !stdout.is_empty() {
-            writeln!(f, "Stdout:")?;
+            writeln!(f, "\nStdout:")?;
             write_indented(f, stdout, INDENT)?;
         }
 
@@ -61,7 +65,7 @@ impl Display for OutputError {
         let stderr = self.output.stderr();
         let stderr = stderr.trim();
         if !stderr.is_empty() {
-            writeln!(f, "Stderr:")?;
+            writeln!(f, "\nStderr:")?;
             write_indented(f, stderr, INDENT)?;
         }
         Ok(())
@@ -86,8 +90,12 @@ impl OutputError {
 }
 
 fn write_indented(f: &mut std::fmt::Formatter<'_>, text: &str, indent: &str) -> std::fmt::Result {
-    for line in text.lines() {
+    let mut lines = text.lines();
+    if let Some(line) = lines.next() {
         write!(f, "{indent}{line}")?;
+        for line in lines {
+            write!(f, "\n{indent}{line}")?;
+        }
     }
     Ok(())
 }

@@ -30,3 +30,6 @@ utf8-command = { version = "1.0.1", optional = true }
 
 [features]
 default = ["utf8-command", "shell-words", "tracing"]
+
+[dev-dependencies]
+indoc = "2.0.4"

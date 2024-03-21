@@ -8,12 +8,12 @@ use crate::Error;
 use crate::OutputError;
 use crate::OutputLike;
 
-pub struct Output<O> {
+pub struct OutputContext<O> {
     pub(crate) output: O,
     pub(crate) command: Box<dyn CommandDisplay>,
 }
 
-impl<O> Output<O>
+impl<O> OutputContext<O>
 where
     O: OutputLike + 'static,
 {

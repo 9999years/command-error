@@ -1,15 +1,60 @@
-//! Utilities for running commands and providing user-friendly error messages.
+//! `command_error` provides the [`CommandExt`] trait, which runs a command and checks its exit
+//! status:
+//!
+//! ```
+//! # use indoc::indoc;
+//! use std::process::Command;
+//! use command_error::CommandExt;
+//!
+//! let err = Command::new("sh")
+//!     .args(["-c", "echo puppy; false"])
+//!     .output_checked_utf8()
+//!     .unwrap_err();
+//!
+//! assert_eq!(
+//!     err.to_string(),
+//!     indoc!(
+//!         "`sh` failed: exit status: 1
+//!         Command failed: `sh -c 'echo puppy; false'`
+//!         Stdout:
+//!           puppy"
+//!     )
+//! );
+//! ```
+//!
+//! Error messages are detailed and helpful. Additional methods are provided for overriding
+//! the default success logic (for that weird tool that thinks `2` is a reasonable exit code) and
+//! for transforming the output (for example, to parse command output as JSON while retaining
+//! information about the command that produced the output in the error message).
+//!
+//! ## Enforcing use of [`CommandExt`]
+//!
+//! If you'd like to make sure that [`CommandExt`] methods are used instead of the plain
+//! [`Command`] methods in your project, you can add a stanza like this to
+//! [`clippy.toml`][clippy-config] at your project root:
+//!
+//! ```toml
+//! [[disallowed-methods]]
+//! path = "std::process::Command::output"
+//! reason = "Use command_error::CommandExt::output_checked[_with][_utf8]"
+//!
+//! [[disallowed-methods]]
+//! path = "std::process::Command::status"
+//! reason = "Use command_error::CommandExt::status_checked[_with]"
+//! ```
+//!
+//! [clippy-config]: https://doc.rust-lang.org/clippy/configuration.html
 
 use std::fmt::Debug;
 use std::fmt::Display;
 use std::process::ExitStatus;
-use std::process::{Command, Output as StdOutput};
+use std::process::{Command, Output};
 
 #[cfg(feature = "utf8-command")]
 use utf8_command::Utf8Output;
 
 mod output;
-pub use output::Output;
+pub use output::OutputContext;
 
 mod output_like;
 pub use output_like::OutputLike;
@@ -33,30 +78,98 @@ pub use command_display::Utf8ProgramAndArgs;
 mod debug_display;
 pub(crate) use debug_display::DebugDisplay;
 
-/// Extension trait for [`Command`], adding helpers to gather output while checking the exit
-/// status.
+/// Extension trait for [`Command`].
+///
+/// [`CommandExt`] methods check the exit status of the command (or perform user-supplied
+/// validation logic) and produced detailed, helpful error messages when they fail:
+///
+/// ```
+/// # use indoc::indoc;
+/// use std::process::Command;
+/// use command_error::CommandExt;
+///
+/// let err = Command::new("sh")
+///     .args(["-c", "echo puppy; false"])
+///     .output_checked_utf8()
+///     .unwrap_err();
+///
+/// assert_eq!(
+///     err.to_string(),
+///     indoc!(
+///         "`sh` failed: exit status: 1
+///         Command failed: `sh -c 'echo puppy; false'`
+///         Stdout:
+///           puppy"
+///     )
+/// );
+/// ```
+///
+/// With the `tracing` feature enabled, commands will be logged before they run.
 pub trait CommandExt {
     type Error: From<Error>;
     type Displayed: for<'a> From<&'a Self> + CommandDisplay;
 
-    /// Like `output_checked_with`, but the closure's return value is used as the function's return
-    /// value.
+    /// Run a command, capturing its output. The given closure is used to determine if the command
+    /// succeeded and to produce the method's output.
     ///
-    /// Useful to apply constraints to the output.
+    /// ```
+    /// # use indoc::indoc;
+    /// # use std::process::Command;
+    /// # use std::process::Output;
+    /// # use command_error::CommandExt;
+    /// # use command_error::OutputContext;
+    /// # mod serde_json {
+    /// #     /// Teehee!
+    /// #     pub fn from_slice(_input: &[u8]) -> Result<Vec<String>, String> {
+    /// #         Err("EOF while parsing a list at line 4 column 11".into())
+    /// #     }
+    /// # }
+    /// let err = Command::new("cat")
+    ///     .arg("tests/data/incomplete.json")
+    ///     .output_checked_as(|context: OutputContext<Output>| {
+    ///         serde_json::from_slice(&context.output().stdout)
+    ///             .map_err(|err| context.error_msg(err))
+    ///     })
+    ///     .unwrap_err();
+    ///
+    /// assert_eq!(
+    ///     err.to_string(),
+    ///     indoc!(
+    ///         r#"`cat` failed: EOF while parsing a list at line 4 column 11
+    ///         exit status: 0
+    ///         Command failed: `cat tests/data/incomplete.json`
+    ///         Stdout:
+    ///           [
+    ///               "cuppy",
+    ///               "dog",
+    ///               "city","#
+    ///     )
+    /// );
+    /// ```
+    ///
+    /// Note that the closure takes the output as raw bytes but the error message contains the
+    /// output decoded as UTF-8. In this example, the decoding only happens in the error case, but
+    /// if you request an [`OutputContext<Utf8Output>`], the decoded data will be reused for the
+    /// error message.
+    ///
+    /// The [`OutputContext`] passed to the closure contains information about the command's
+    /// [`Output`] (including its [`ExitStatus`]), the command that ran (the program name and its
+    /// arguments), and methods for constructing detailed error messages (with or without
+    /// additional context information).
     #[track_caller]
     fn output_checked_as<O, R, E>(
         &mut self,
-        succeeded: impl Fn(Output<O>) -> Result<R, E>,
+        succeeded: impl Fn(OutputContext<O>) -> Result<R, E>,
     ) -> Result<R, E>
     where
         O: Debug,
         O: OutputLike,
         O: 'static,
-        O: TryFrom<StdOutput>,
-        <O as TryFrom<StdOutput>>::Error: Display,
+        O: TryFrom<Output>,
+        <O as TryFrom<Output>>::Error: Display,
         E: From<Self::Error>;
 
-    /// Like [`output_checked`] but a closure determines if the command failed instead of
+    /// Like [`CommandExt::output_checked`] but a closure determines if the command failed instead of
     /// [`ExitStatus::success`].
     #[track_caller]
     fn output_checked_with<O, E>(
@@ -66,8 +179,8 @@ pub trait CommandExt {
     where
         O: Debug,
         O: OutputLike,
-        O: TryFrom<StdOutput>,
-        <O as TryFrom<StdOutput>>::Error: Display,
+        O: TryFrom<Output>,
+        <O as TryFrom<Output>>::Error: Display,
         O: 'static,
         E: Debug,
         E: Display,
@@ -81,8 +194,8 @@ pub trait CommandExt {
 
     /// Like [`Command::output`], but checks the exit status and provides nice error messages.
     #[track_caller]
-    fn output_checked(&mut self) -> Result<StdOutput, Self::Error> {
-        self.output_checked_with(|output: &StdOutput| {
+    fn output_checked(&mut self) -> Result<Output, Self::Error> {
+        self.output_checked_with(|output: &Output| {
             if output.status.success() {
                 Ok(())
             } else {
@@ -91,7 +204,7 @@ pub trait CommandExt {
         })
     }
 
-    /// Like [`output_checked`], but also decodes Stdout and Stderr as UTF-8.
+    /// Like [`CommandExt::output_checked`], but also decodes Stdout and Stderr as UTF-8.
     #[cfg(feature = "utf8-command")]
     #[track_caller]
     fn output_checked_utf8(&mut self) -> Result<Utf8Output, Self::Error> {
@@ -103,7 +216,7 @@ pub trait CommandExt {
             }
         })
     }
-    /// Like [`output_checked_with`], but also decodes Stdout and Stderr as UTF-8.
+    /// Like [`CommandExt::output_checked_with`], but also decodes Stdout and Stderr as UTF-8.
     #[cfg(feature = "utf8-command")]
     #[track_caller]
     fn output_checked_with_utf8<E>(
@@ -122,7 +235,7 @@ pub trait CommandExt {
     #[track_caller]
     fn status_checked_as<R, E>(
         &mut self,
-        succeeded: impl Fn(Output<ExitStatus>) -> Result<R, E>,
+        succeeded: impl Fn(OutputContext<ExitStatus>) -> Result<R, E>,
     ) -> Result<R, E>
     where
         E: From<Self::Error>;
@@ -175,18 +288,18 @@ impl CommandExt for Command {
 
     fn output_checked_as<O, R, E>(
         &mut self,
-        succeeded: impl Fn(Output<O>) -> Result<R, E>,
+        succeeded: impl Fn(OutputContext<O>) -> Result<R, E>,
     ) -> Result<R, E>
     where
         O: Debug,
         O: OutputLike,
         O: 'static,
-        O: TryFrom<StdOutput>,
-        <O as TryFrom<StdOutput>>::Error: Display,
+        O: TryFrom<Output>,
+        <O as TryFrom<Output>>::Error: Display,
         E: From<Self::Error>,
     {
         let (output, displayed): (O, Self::Displayed) = get_output_as(self)?;
-        succeeded(Output {
+        succeeded(OutputContext {
             output,
             command: Box::new(displayed),
         })
@@ -194,7 +307,7 @@ impl CommandExt for Command {
 
     fn status_checked_as<R, E>(
         &mut self,
-        succeeded: impl Fn(Output<ExitStatus>) -> Result<R, E>,
+        succeeded: impl Fn(OutputContext<ExitStatus>) -> Result<R, E>,
     ) -> Result<R, E>
     where
         E: From<Self::Error>,
@@ -203,7 +316,7 @@ impl CommandExt for Command {
         let displayed: Utf8ProgramAndArgs = (&*self).into();
         let displayed = Box::new(displayed);
         match self.status() {
-            Ok(status) => succeeded(Output {
+            Ok(status) => succeeded(OutputContext {
                 output: status,
                 command: displayed,
             }),
@@ -218,9 +331,9 @@ impl CommandExt for Command {
 
 fn get_output_as<O, D>(cmd: &mut Command) -> Result<(O, D), Error>
 where
-    O: TryFrom<StdOutput>,
+    O: TryFrom<Output>,
     O: Debug + OutputLike + 'static,
-    <O as TryFrom<StdOutput>>::Error: Display,
+    <O as TryFrom<Output>>::Error: Display,
     D: CommandDisplay + for<'a> From<&'a Command> + 'static,
 {
     cmd.log()?;
