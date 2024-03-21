@@ -8,7 +8,54 @@ use crate::OutputLike;
 #[cfg(doc)]
 use crate::CommandExt;
 
-/// An error from a failed command. Produced by [`CommandExt`].
+#[cfg(doc)]
+use crate::ExecError;
+
+/// An error from a failed command, typically due to a non-zero exit status.
+///
+/// Produced by [`CommandExt`]. This indicates a command that failed, typically with a non-zero
+/// exit code, rather than a command that failed to start (as in [`ExecError`]).
+///
+/// ```
+/// # use pretty_assertions::assert_eq;
+/// # use indoc::indoc;
+/// # use std::process::Command;
+/// # use std::process::Output;
+/// # use std::process::ExitStatus;
+/// # use command_error::Utf8ProgramAndArgs;
+/// # use command_error::CommandDisplay;
+/// # use command_error::OutputError;
+/// let mut command = Command::new("sh");
+/// command.args(["-c", "echo puppy doggy"]);
+/// let displayed: Utf8ProgramAndArgs = (&command).into();
+/// let error = OutputError::new(
+///     Box::new(displayed),
+///     Box::new(Output {
+///         status: ExitStatus::default(),
+///         stdout: "puppy doggy\n".as_bytes().to_vec(),
+///         stderr: Vec::new(),
+///     })
+/// );
+/// assert_eq!(
+///     error.to_string(),
+///     indoc!(
+///         "`sh` failed: exit status: 0
+///         Command failed: `sh -c 'echo puppy doggy'`
+///         Stdout:
+///           puppy doggy"
+///     ),
+/// );
+/// assert_eq!(
+///     error.with_message(Box::new("no kitties found!")).to_string(),
+///     indoc!(
+///         "`sh` failed: no kitties found!
+///         exit status: 0
+///         Command failed: `sh -c 'echo puppy doggy'`
+///         Stdout:
+///           puppy doggy"
+///     )
+/// );
+/// ```
 pub struct OutputError {
     /// The program and arguments that ran.
     pub(crate) command: Box<dyn CommandDisplay>,
@@ -16,6 +63,29 @@ pub struct OutputError {
     pub(crate) output: Box<dyn OutputLike>,
     /// A user-defined error message.
     pub(crate) user_error: Option<Box<dyn DebugDisplay>>,
+}
+
+impl OutputError {
+    /// Construct a new [`OutputError`].
+    pub fn new(command: Box<dyn CommandDisplay>, output: Box<dyn OutputLike>) -> Self {
+        Self {
+            command,
+            output,
+            user_error: None,
+        }
+    }
+
+    /// Attach a user-defined message to this error.
+    pub fn with_message(mut self, message: Box<dyn DebugDisplay>) -> Self {
+        self.user_error = Some(message);
+        self
+    }
+
+    /// Remove a user-defined message from this error, if any.
+    pub fn without_message(mut self) -> Self {
+        self.user_error = None;
+        self
+    }
 }
 
 impl Debug for OutputError {
@@ -82,21 +152,6 @@ impl Display for OutputError {
 }
 
 impl std::error::Error for OutputError {}
-
-impl OutputError {
-    pub(crate) fn new(command: Box<dyn CommandDisplay>, output: Box<dyn OutputLike>) -> Self {
-        Self {
-            command,
-            output,
-            user_error: None,
-        }
-    }
-
-    pub(crate) fn with_user_error(mut self, user_error: Option<Box<dyn DebugDisplay>>) -> Self {
-        self.user_error = user_error;
-        self
-    }
-}
 
 fn write_indented(f: &mut std::fmt::Formatter<'_>, text: &str, indent: &str) -> std::fmt::Result {
     let mut lines = text.lines();
