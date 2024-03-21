@@ -1,0 +1,36 @@
+[workspace]
+resolver = "2"
+
+[package]
+name = "command-error"
+version = "0.1.0"
+description = "Detailed error messages and status checking for `std::process::Command`"
+edition = "2021"
+license = "MIT"
+repository = "https://github.com/9999years/command-error"
+authors = [
+    "Rebecca Turner <rbt@sent.as>"
+]
+keywords = ["command", "process", "error"]
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+# See: https://github.com/crate-ci/cargo-release/blob/master/docs/reference.md
+[workspace.metadata.release]
+# Set the commit message.
+pre-release-commit-message = "Release {{crate_name}} version {{version}}"
+consolidate-commits = false # One commit per crate.
+tag = false # Don't tag commits.
+push = false # Don't do `git push`.
+publish = false # Don't do `cargo publish`.
+
+[dependencies]
+shell-words = { version = "1", optional = true }
+tracing = { version = "0", optional = true }
+utf8-command = { version = "1", optional = true }
+
+[features]
+default = ["utf8-command", "shell-words", "tracing"]
+
+[dev-dependencies]
+indoc = "2.0.4"
+pretty_assertions = "1.4.0"
