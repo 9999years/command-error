@@ -36,9 +36,13 @@
     };
 
   checks = {
-    command-error-tests = craneLib.cargoNextest (commonArgs
+    command-error-nextest = craneLib.cargoNextest (commonArgs
       // {
         NEXTEST_HIDE_PROGRESS_BAR = "true";
+      });
+    command-error-doctest = craneLib.cargoTest (commonArgs
+      // {
+        cargoTestArgs = "--doc";
       });
     command-error-clippy = craneLib.cargoClippy (commonArgs
       // {

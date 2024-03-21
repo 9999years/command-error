@@ -33,3 +33,4 @@ default = ["utf8-command", "shell-words", "tracing"]
 
 [dev-dependencies]
 indoc = "2.0.4"
+pretty_assertions = "1.4.0"
