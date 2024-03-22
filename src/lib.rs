@@ -41,6 +41,22 @@
 //! [[disallowed-methods]]
 //! path = "std::process::Command::status"
 //! reason = "Use command_error::CommandExt::status_checked[_with]"
+//!
+//! [[disallowed-methods]]
+//! path = "std::process::Command::spawn"
+//! reason = "Use command_error::CommandExt::spawn_checked"
+//!
+//! [[disallowed-methods]]
+//! path = "std::process::Child::try_wait"
+//! reason = "Use command_error::ChildExt::try_wait_checked[_with]"
+//!
+//! [[disallowed-methods]]
+//! path = "std::process::Child::wait"
+//! reason = "Use command_error::ChildExt::wait_checked[_with]"
+//!
+//! [[disallowed-methods]]
+//! path = "std::process::Child::wait_with_output"
+//! reason = "Use command_error::ChildExt::output_checked[_with][_utf8]"
 //! ```
 //!
 //! [clippy-config]: https://doc.rust-lang.org/clippy/configuration.html
@@ -52,6 +68,12 @@ use std::process::Command;
 
 mod output_context;
 pub use output_context::OutputContext;
+
+mod try_wait_context;
+pub use try_wait_context::TryWaitContext;
+
+mod child_context;
+pub use child_context::ChildContext;
 
 mod output_like;
 pub use output_like::OutputLike;
@@ -65,15 +87,23 @@ pub use output_error::OutputError;
 mod output_conversion_error;
 pub use output_conversion_error::OutputConversionError;
 
+mod wait_error;
+pub use wait_error::WaitError;
+
 mod error;
 pub use error::Error;
 
 mod command_display;
 pub use command_display::CommandDisplay;
-pub use command_display::Utf8ProgramAndArgs;
+
+mod utf8_program_and_args;
+pub use utf8_program_and_args::Utf8ProgramAndArgs;
 
 mod debug_display;
 pub(crate) use debug_display::DebugDisplay;
 
 mod command_ext;
 pub use command_ext::CommandExt;
+
+mod child_ext;
+pub use child_ext::ChildExt;
