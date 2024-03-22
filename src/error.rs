@@ -1,6 +1,8 @@
 use std::fmt::Display;
 
 #[cfg(doc)]
+use std::process::Child;
+#[cfg(doc)]
 use std::process::Command;
 #[cfg(doc)]
 use std::process::Output;
@@ -8,6 +10,7 @@ use std::process::Output;
 use crate::output_conversion_error::OutputConversionError;
 use crate::ExecError;
 use crate::OutputError;
+use crate::WaitError;
 
 #[cfg(doc)]
 use crate::CommandExt;
@@ -18,6 +21,10 @@ use crate::CommandExt;
 pub enum Error {
     /// An execution failure, when a [`Command`] fails to start.
     Exec(ExecError),
+    /// A failure to wait for a [`Command`].
+    ///
+    /// See: [`Child::wait`].
+    Wait(WaitError),
     /// An output failure, when a [`Command`] fails by returning a non-zero exit code (or in other
     /// cases, when custom validation logic is supplied in methods like
     /// [`CommandExt::output_checked_with`]).
@@ -34,6 +41,7 @@ impl Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Error::Exec(error) => write!(f, "{}", error),
+            Error::Wait(error) => write!(f, "{}", error),
             Error::Output(error) => write!(f, "{}", error),
             Error::Conversion(error) => write!(f, "{}", error),
         }
@@ -43,6 +51,12 @@ impl Display for Error {
 impl From<ExecError> for Error {
     fn from(error: ExecError) -> Self {
         Self::Exec(error)
+    }
+}
+
+impl From<WaitError> for Error {
+    fn from(error: WaitError) -> Self {
+        Self::Wait(error)
     }
 }
 

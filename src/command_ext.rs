@@ -1,11 +1,12 @@
 use std::fmt::Debug;
 use std::fmt::Display;
+use std::process::Child;
 use std::process::ExitStatus;
 use std::process::{Command, Output};
 
 use utf8_command::Utf8Output;
 
-use crate::CommandDisplay;
+use crate::ChildContext;
 use crate::Error;
 use crate::ExecError;
 use crate::OutputContext;
@@ -43,21 +44,27 @@ use crate::Utf8ProgramAndArgs;
 ///
 /// # Method overview
 ///
-/// | Method | Output decoding | Validation |
-/// | ------ | --------------- | ---------- |
-/// | [`output_checked`][CommandExt::output_checked`] | Bytes | Non-zero exit codes are errors |
-/// | [`output_checked_utf8`][CommandExt::output_checked_utf8`] | UTF-8 | Non-zero exit codes are errors |
+/// | Method | Output decoding | Errors |
+/// | ------ | --------------- | ------ |
+/// | [`output_checked`][CommandExt::output_checked`] | Bytes | If non-zero exit code |
 /// | [`output_checked_with`][CommandExt::output_checked_with`] | Arbitrary | Custom |
-/// | [`output_checked_with_utf8`][CommandExt::output_checked_with_utf8`] | UTF-8 | Custom |
 /// | [`output_checked_as`][CommandExt::output_checked_as`] | Arbitrary | Custom, with arbitrary error type |
+/// | [`output_checked_utf8`][CommandExt::output_checked_utf8`] | UTF-8 | If non-zero exit code |
+/// | [`output_checked_with_utf8`][CommandExt::output_checked_with_utf8`] | UTF-8 | Custom |
+/// | [`status_checked`][CommandExt::status_checked`] | None | If non-zero exit code |
+/// | [`status_checked_with`][CommandExt::status_checked_with`] | None | Custom |
 /// | [`status_checked_as`][CommandExt::status_checked_as`] | None | Custom, with arbitrary error type |
-/// | [`status_checked`][CommandExt::status_checked`] | None | Non-zero exit codes are errors |
-pub trait CommandExt {
+pub trait CommandExt: Sized {
     /// The error type returned from methods on this trait.
     type Error: From<Error>;
 
+    /// The type of child process produced.
+    type Child;
+
     /// Run a command, capturing its output. `succeeded` is called and returned to determine if the
     /// command succeeded.
+    ///
+    /// See [`Command::output`] for more information.
     ///
     /// This is the most general [`CommandExt`] method, and gives the caller full control over
     /// success logic and the output and errors produced.
@@ -127,6 +134,8 @@ pub trait CommandExt {
     /// output that can't be produced with [`TryFrom<Output>`] (such as to deserialize a data
     /// structure), [`CommandExt::output_checked_as`] provides full control over the produced
     /// result.
+    ///
+    /// See [`Command::output`] for more information.
     ///
     /// ```
     /// # use indoc::indoc;
@@ -200,15 +209,17 @@ pub trait CommandExt {
         E: Display,
         E: 'static,
     {
-        self.output_checked_as(|output| match succeeded(output.output()) {
-            Ok(()) => Ok(output.into_output()),
-            Err(user_error) => Err(output.maybe_error_msg(user_error).into()),
+        self.output_checked_as(|context| match succeeded(context.output()) {
+            Ok(()) => Ok(context.into_output()),
+            Err(user_error) => Err(context.maybe_error_msg(user_error).into()),
         })
     }
 
     /// Run a command, capturing its output. If the command exits with a non-zero exit code, an
-    /// error is raised. Error messages are detailed and contain information about the command that
-    /// was run and its output:
+    /// error is raised.
+    ///
+    /// Error messages are detailed and contain information about the command that was run and its
+    /// output:
     ///
     /// ```
     /// # use pretty_assertions::assert_eq;
@@ -243,6 +254,8 @@ pub trait CommandExt {
     /// otherwise no output decoding is performed. To decode output as UTF-8, use
     /// [`CommandExt::output_checked_utf8`]. To decode as other formats, use
     /// [`CommandExt::output_checked_with`].
+    ///
+    /// See [`Command::output`] for more information.
     #[track_caller]
     fn output_checked(&mut self) -> Result<Output, Self::Error> {
         self.output_checked_with(|output: &Output| {
@@ -257,7 +270,7 @@ pub trait CommandExt {
     /// Run a command, capturing its output and decoding it as UTF-8. If the command exits with a
     /// non-zero exit code or if its output contains invalid UTF-8, an error is raised.
     ///
-    /// See [`CommandExt::output_checked`] for more information.
+    /// See [`CommandExt::output_checked`] and [`Command::output`] for more information.
     ///
     /// ```
     /// # use pretty_assertions::assert_eq;
@@ -290,11 +303,12 @@ pub trait CommandExt {
             }
         })
     }
+
     /// Run a command, capturing its output and decoding it as UTF-8. `succeeded` is called and
     /// used to determine if the command succeeded and (optionally) to add an additional message to
     /// the error returned.
     ///
-    /// See [`CommandExt::output_checked_with`] for more information.
+    /// See [`CommandExt::output_checked_with`] and [`Command::output`] for more information.
     ///
     /// ```
     /// # use pretty_assertions::assert_eq;
@@ -369,6 +383,8 @@ pub trait CommandExt {
     /// ```
     ///
     /// To error on non-zero exit codes, use [`CommandExt::status_checked`].
+    ///
+    /// See [`Command::status`] for more information.
     #[track_caller]
     fn status_checked_as<R, E>(
         &mut self,
@@ -400,6 +416,8 @@ pub trait CommandExt {
     ///     .unwrap();
     /// assert_eq!(status.code(), Some(1));
     /// ```
+    ///
+    /// See [`Command::status`] for more information.
     #[track_caller]
     fn status_checked_with<E>(
         &mut self,
@@ -438,6 +456,8 @@ pub trait CommandExt {
     ///     )
     /// );
     /// ```
+    ///
+    /// See [`Command::status`] for more information.
     #[track_caller]
     fn status_checked(&mut self) -> Result<ExitStatus, Self::Error> {
         self.status_checked_with(|status| {
@@ -449,16 +469,41 @@ pub trait CommandExt {
         })
     }
 
+    /// Spawn a command.
+    ///
+    /// The returned child contains context information about the command that produced it, which
+    /// can be used to produce detailed error messages if the child process fails.
+    ///
+    /// See [`Command::spawn`] for more information.
+    ///
+    /// ```
+    /// # use pretty_assertions::assert_eq;
+    /// # use indoc::indoc;
+    /// # use std::process::Command;
+    /// # use std::process::ExitStatus;
+    /// # use command_error::CommandExt;
+    /// let err = Command::new("ooga booga")
+    ///     .spawn_checked()
+    ///     .unwrap_err();
+    ///
+    /// assert_eq!(
+    ///     err.to_string(),
+    ///     "Failed to execute `'ooga booga'`: No such file or directory (os error 2)"
+    /// );
+    /// ```
+    #[track_caller]
+    fn spawn_checked(&mut self) -> Result<Self::Child, Self::Error>;
+
     /// Log the command that will be run.
     ///
     /// With the `tracing` feature enabled, this will emit a debug-level log with message
-    /// `Executing command` and a `command` field containing the displayed command (by default,
-    /// shell-quoted).
+    /// `Executing command` and a `command` field containing the command and arguments shell-quoted.
     fn log(&self) -> Result<(), Self::Error>;
 }
 
 impl CommandExt for Command {
     type Error = Error;
+    type Child = ChildContext<Child>;
 
     fn log(&self) -> Result<(), Self::Error> {
         #[cfg(feature = "tracing")]
@@ -481,11 +526,26 @@ impl CommandExt for Command {
         <O as TryFrom<Output>>::Error: Display,
         E: From<Self::Error>,
     {
-        let (output, displayed): (O, Utf8ProgramAndArgs) = get_output_as(self)?;
-        succeeded(OutputContext {
-            output,
-            command: Box::new(displayed),
-        })
+        self.log()?;
+        let displayed: Utf8ProgramAndArgs = (&*self).into();
+        match self.output() {
+            Ok(output) => match output.try_into() {
+                Ok(output) => succeeded(OutputContext {
+                    output,
+                    command: Box::new(displayed),
+                }),
+                Err(error) => Err(Error::from(OutputConversionError {
+                    command: Box::new(displayed),
+                    inner: Box::new(error),
+                })
+                .into()),
+            },
+            Err(inner) => Err(Error::from(ExecError {
+                command: Box::new(displayed),
+                inner,
+            })
+            .into()),
+        }
     }
 
     fn status_checked_as<R, E>(
@@ -510,28 +570,18 @@ impl CommandExt for Command {
             .into()),
         }
     }
-}
 
-fn get_output_as<O, D>(cmd: &mut Command) -> Result<(O, D), Error>
-where
-    O: TryFrom<Output>,
-    O: Debug + OutputLike + 'static,
-    <O as TryFrom<Output>>::Error: Display,
-    D: CommandDisplay + for<'a> From<&'a Command> + 'static,
-{
-    cmd.log()?;
-    let displayed: D = (&*cmd).into();
-    match cmd.output() {
-        Ok(output) => match output.try_into() {
-            Ok(output) => Ok((output, displayed)),
-            Err(error) => Err(Error::from(OutputConversionError {
+    fn spawn_checked(&mut self) -> Result<Self::Child, Self::Error> {
+        let displayed: Utf8ProgramAndArgs = (&*self).into();
+        match self.spawn() {
+            Ok(child) => Ok(ChildContext {
+                child,
                 command: Box::new(displayed),
-                inner: Box::new(error),
+            }),
+            Err(inner) => Err(Error::from(ExecError {
+                command: Box::new(displayed),
+                inner,
             })),
-        },
-        Err(inner) => Err(Error::from(ExecError {
-            command: Box::new(displayed),
-            inner,
-        })),
+        }
     }
 }
