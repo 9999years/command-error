@@ -107,3 +107,6 @@ pub use command_ext::CommandExt;
 
 mod child_ext;
 pub use child_ext::ChildExt;
+
+#[cfg(feature = "process-wrap")]
+mod process_wrap;

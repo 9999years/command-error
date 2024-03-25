@@ -19,7 +19,7 @@ use crate::CommandExt;
 #[derive(Debug)]
 #[non_exhaustive]
 pub enum Error {
-    /// An execution failure, when a [`Command`] fails to start.
+    /// An execution failure, when a [`Command`] fails to start or [`Child::wait`].
     Exec(ExecError),
     /// A failure to wait for a [`Command`].
     ///
