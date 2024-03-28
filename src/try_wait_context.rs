@@ -15,7 +15,7 @@ use crate::OutputContext;
 /// See also: [`OutputContext`].
 pub struct TryWaitContext {
     pub(crate) status: Option<ExitStatus>,
-    pub(crate) command: Box<dyn CommandDisplay>,
+    pub(crate) command: Box<dyn CommandDisplay + Send + Sync>,
 }
 
 impl TryWaitContext {
@@ -26,12 +26,12 @@ impl TryWaitContext {
 
     /// Get a reference to the command contained in this context object, for use in error messages
     /// or diagnostics.
-    pub fn command(&self) -> &dyn CommandDisplay {
+    pub fn command(&self) -> &(dyn CommandDisplay + Send + Sync) {
         self.command.borrow()
     }
 
     /// Get the command contained in this context object, for use in error messages or diagnostics.
-    pub fn into_command(self) -> Box<dyn CommandDisplay> {
+    pub fn into_command(self) -> Box<(dyn CommandDisplay + Send + Sync)> {
         self.command
     }
 

@@ -32,3 +32,4 @@ utf8-command = "1"
 [dev-dependencies]
 indoc = "2.0.4"
 pretty_assertions = "1.4.0"
+static_assertions = "1.1.0"

@@ -19,7 +19,7 @@ use crate::OutputContext;
 /// See: [`OutputContext`].
 pub struct ChildContext<C> {
     pub(crate) child: C,
-    pub(crate) command: Box<dyn CommandDisplay>,
+    pub(crate) command: Box<dyn CommandDisplay + Send + Sync>,
 }
 
 impl<C> ChildContext<C> {
@@ -39,7 +39,7 @@ impl<C> ChildContext<C> {
     }
 
     /// Get a reference to the command which produced this child process.
-    pub fn command(&self) -> &dyn CommandDisplay {
+    pub fn command(&self) -> &(dyn CommandDisplay + Send + Sync) {
         self.command.borrow()
     }
 }

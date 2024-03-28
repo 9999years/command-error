@@ -58,16 +58,19 @@ use crate::ExecError;
 /// ```
 pub struct OutputError {
     /// The program and arguments that ran.
-    pub(crate) command: Box<dyn CommandDisplay>,
+    pub(crate) command: Box<dyn CommandDisplay + Send + Sync>,
     /// The program's output and exit code.
-    pub(crate) output: Box<dyn OutputLike>,
+    pub(crate) output: Box<dyn OutputLike + Send + Sync>,
     /// A user-defined error message.
-    pub(crate) user_error: Option<Box<dyn DebugDisplay>>,
+    pub(crate) user_error: Option<Box<dyn DebugDisplay + Send + Sync>>,
 }
 
 impl OutputError {
     /// Construct a new [`OutputError`].
-    pub fn new(command: Box<dyn CommandDisplay>, output: Box<dyn OutputLike>) -> Self {
+    pub fn new(
+        command: Box<dyn CommandDisplay + Send + Sync>,
+        output: Box<dyn OutputLike + Send + Sync>,
+    ) -> Self {
         Self {
             command,
             output,
@@ -76,7 +79,7 @@ impl OutputError {
     }
 
     /// Attach a user-defined message to this error.
-    pub fn with_message(mut self, message: Box<dyn DebugDisplay>) -> Self {
+    pub fn with_message(mut self, message: Box<dyn DebugDisplay + Send + Sync>) -> Self {
         self.user_error = Some(message);
         self
     }
@@ -154,4 +157,12 @@ fn write_indented(f: &mut std::fmt::Formatter<'_>, text: &str, indent: &str) -> 
         }
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use static_assertions::assert_impl_all;
+
+    assert_impl_all!(OutputError: Send, Sync);
 }

@@ -29,13 +29,13 @@ use crate::CommandDisplay;
 /// );
 /// ```
 pub struct WaitError {
-    pub(crate) command: Box<dyn CommandDisplay>,
+    pub(crate) command: Box<dyn CommandDisplay + Send + Sync>,
     pub(crate) inner: std::io::Error,
 }
 
 impl WaitError {
     /// Construct a new [`WaitError`].
-    pub fn new(command: Box<dyn CommandDisplay>, inner: std::io::Error) -> Self {
+    pub fn new(command: Box<dyn CommandDisplay + Send + Sync>, inner: std::io::Error) -> Self {
         Self { command, inner }
     }
 }
@@ -61,3 +61,11 @@ impl Display for WaitError {
 }
 
 impl std::error::Error for WaitError {}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use static_assertions::assert_impl_all;
+
+    assert_impl_all!(WaitError: Send, Sync);
+}

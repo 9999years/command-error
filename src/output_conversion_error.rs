@@ -47,13 +47,16 @@ use crate::CommandExt;
 /// );
 /// ```
 pub struct OutputConversionError {
-    pub(crate) command: Box<dyn CommandDisplay>,
-    pub(crate) inner: Box<dyn Display>,
+    pub(crate) command: Box<dyn CommandDisplay + Send + Sync>,
+    pub(crate) inner: Box<dyn Display + Send + Sync>,
 }
 
 impl OutputConversionError {
     /// Construct a new [`OutputConversionError`].
-    pub fn new(command: Box<dyn CommandDisplay>, inner: Box<dyn Display>) -> Self {
+    pub fn new(
+        command: Box<dyn CommandDisplay + Send + Sync>,
+        inner: Box<dyn Display + Send + Sync>,
+    ) -> Self {
         Self { command, inner }
     }
 }
@@ -76,4 +79,12 @@ impl Display for OutputConversionError {
             self.inner
         )
     }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use static_assertions::assert_impl_all;
+
+    assert_impl_all!(OutputConversionError: Send, Sync);
 }
