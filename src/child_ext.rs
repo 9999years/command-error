@@ -46,7 +46,7 @@ pub trait ChildExt: Sized {
         O: OutputLike,
         O: 'static,
         O: TryFrom<Output>,
-        <O as TryFrom<Output>>::Error: Display,
+        <O as TryFrom<Output>>::Error: Display + Send + Sync,
         E: From<Self::Error>;
 
     /// Wait for the process to complete, capturing its output. `succeeded` is called and used to
@@ -62,11 +62,11 @@ pub trait ChildExt: Sized {
         O: Debug,
         O: OutputLike,
         O: TryFrom<Output>,
-        <O as TryFrom<Output>>::Error: Display,
-        O: 'static,
+        <O as TryFrom<Output>>::Error: Display + Send + Sync,
+        O: Send + Sync + 'static,
         E: Debug,
         E: Display,
-        E: 'static,
+        E: Send + Sync + 'static,
     {
         self.output_checked_as(|context| match succeeded(context.output()) {
             Ok(()) => Ok(context.into_output()),
@@ -117,7 +117,7 @@ pub trait ChildExt: Sized {
     where
         E: Display,
         E: Debug,
-        E: 'static,
+        E: Send + Sync + 'static,
     {
         self.output_checked_with(succeeded)
     }
@@ -183,7 +183,7 @@ pub trait ChildExt: Sized {
     where
         E: Debug,
         E: Display,
-        E: 'static,
+        E: Send + Sync + 'static,
     {
         self.wait_checked_as(|context| match succeeded(context.status()) {
             Ok(()) => Ok(context.status()),
@@ -226,7 +226,7 @@ impl ChildExt for ChildContext<Child> {
         O: OutputLike,
         O: 'static,
         O: TryFrom<Output>,
-        <O as TryFrom<Output>>::Error: Display,
+        <O as TryFrom<Output>>::Error: Display + Send + Sync,
         E: From<Self::Error>,
     {
         self.log()?;

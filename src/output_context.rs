@@ -27,12 +27,12 @@ use crate::OutputLike;
 /// is also used as context for [`status`][`CommandExt::status_checked`] calls.
 pub struct OutputContext<O> {
     pub(crate) output: O,
-    pub(crate) command: Box<dyn CommandDisplay>,
+    pub(crate) command: Box<dyn CommandDisplay + Send + Sync>,
 }
 
 impl<O> OutputContext<O>
 where
-    O: OutputLike + 'static,
+    O: OutputLike + Send + Sync + 'static,
 {
     /// Get the [`OutputLike`] data contained in this context object.
     pub fn into_output(self) -> O {
@@ -51,7 +51,7 @@ where
 
     /// Get a reference to the command contained in this context object, for use in error messages
     /// or diagnostics.
-    pub fn command(&self) -> &dyn CommandDisplay {
+    pub fn command(&self) -> &(dyn CommandDisplay + Send + Sync) {
         self.command.borrow()
     }
 
@@ -75,7 +75,7 @@ where
     /// See [`CommandExt::output_checked_as`] for examples of the error format.
     pub fn error_msg<E>(self, message: E) -> Error
     where
-        E: Debug + Display + 'static,
+        E: Debug + Display + Send + Sync + 'static,
     {
         Error::from(
             OutputError::new(self.command, Box::new(self.output)).with_message(Box::new(message)),
@@ -84,7 +84,7 @@ where
 
     pub(crate) fn maybe_error_msg<E>(self, message: Option<E>) -> Error
     where
-        E: Debug + Display + 'static,
+        E: Debug + Display + Send + Sync + 'static,
     {
         let ret = OutputError::new(self.command, Box::new(self.output));
         Error::from(match message {

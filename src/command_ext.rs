@@ -56,7 +56,7 @@ use crate::Utf8ProgramAndArgs;
 /// | [`status_checked_as`][CommandExt::status_checked_as`] | None | Custom, with arbitrary error type |
 pub trait CommandExt: Sized {
     /// The error type returned from methods on this trait.
-    type Error: From<Error>;
+    type Error: From<Error> + Send + Sync;
 
     /// The type of child process produced.
     type Child;
@@ -119,12 +119,9 @@ pub trait CommandExt: Sized {
         succeeded: impl Fn(OutputContext<O>) -> Result<R, E>,
     ) -> Result<R, E>
     where
-        O: Debug,
-        O: OutputLike,
-        O: 'static,
-        O: TryFrom<Output>,
-        <O as TryFrom<Output>>::Error: Display,
-        E: From<Self::Error>;
+        O: Debug + OutputLike + TryFrom<Output> + Send + Sync + 'static,
+        <O as TryFrom<Output>>::Error: Display + Send + Sync,
+        E: From<Self::Error> + Send + Sync;
 
     /// Run a command, capturing its output. `succeeded` is called and used to determine if the
     /// command succeeded and (optionally) to add an additional message to the error returned.
@@ -200,14 +197,9 @@ pub trait CommandExt: Sized {
         succeeded: impl Fn(&O) -> Result<(), Option<E>>,
     ) -> Result<O, Self::Error>
     where
-        O: Debug,
-        O: OutputLike,
-        O: TryFrom<Output>,
-        <O as TryFrom<Output>>::Error: Display,
-        O: 'static,
-        E: Debug,
-        E: Display,
-        E: 'static,
+        O: Debug + OutputLike + TryFrom<Output> + Send + Sync + 'static,
+        <O as TryFrom<Output>>::Error: Display + Send + Sync,
+        E: Debug + Display + Send + Sync + 'static,
     {
         self.output_checked_as(|context| match succeeded(context.output()) {
             Ok(()) => Ok(context.into_output()),
@@ -337,9 +329,7 @@ pub trait CommandExt: Sized {
         succeeded: impl Fn(&Utf8Output) -> Result<(), Option<E>>,
     ) -> Result<Utf8Output, Self::Error>
     where
-        E: Display,
-        E: Debug,
-        E: 'static,
+        E: Display + Debug + Send + Sync + 'static,
     {
         self.output_checked_with(succeeded)
     }
@@ -424,9 +414,7 @@ pub trait CommandExt: Sized {
         succeeded: impl Fn(ExitStatus) -> Result<(), Option<E>>,
     ) -> Result<ExitStatus, Self::Error>
     where
-        E: Debug,
-        E: Display,
-        E: 'static,
+        E: Debug + Display + Send + Sync + 'static,
     {
         self.status_checked_as(|status| match succeeded(status.status()) {
             Ok(()) => Ok(status.status()),
@@ -519,12 +507,9 @@ impl CommandExt for Command {
         succeeded: impl Fn(OutputContext<O>) -> Result<R, E>,
     ) -> Result<R, E>
     where
-        O: Debug,
-        O: OutputLike,
-        O: 'static,
-        O: TryFrom<Output>,
-        <O as TryFrom<Output>>::Error: Display,
-        E: From<Self::Error>,
+        O: Debug + OutputLike + TryFrom<Output> + Send + Sync + 'static,
+        <O as TryFrom<Output>>::Error: Display + Send + Sync,
+        E: From<Self::Error> + Send + Sync,
     {
         self.log()?;
         let displayed: Utf8ProgramAndArgs = (&*self).into();

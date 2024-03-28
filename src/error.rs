@@ -73,3 +73,11 @@ impl From<OutputConversionError> for Error {
 }
 
 impl std::error::Error for Error {}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use static_assertions::assert_impl_all;
+
+    assert_impl_all!(Error: Send, Sync);
+}

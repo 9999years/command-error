@@ -34,13 +34,13 @@ use crate::OutputError;
 /// );
 /// ```
 pub struct ExecError {
-    pub(crate) command: Box<dyn CommandDisplay>,
+    pub(crate) command: Box<dyn CommandDisplay + Send + Sync>,
     pub(crate) inner: std::io::Error,
 }
 
 impl ExecError {
     /// Construct a new [`ExecError`].
-    pub fn new(command: Box<dyn CommandDisplay>, inner: std::io::Error) -> Self {
+    pub fn new(command: Box<dyn CommandDisplay + Send + Sync>, inner: std::io::Error) -> Self {
         Self { command, inner }
     }
 }
@@ -68,3 +68,11 @@ impl Display for ExecError {
 }
 
 impl std::error::Error for ExecError {}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use static_assertions::assert_impl_all;
+
+    assert_impl_all!(ExecError: Send, Sync);
+}
