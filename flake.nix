@@ -4,13 +4,17 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs";
     systems.url = "github:nix-systems/default";
-    crane = {
-      url = "github:ipetkov/crane";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
+    crane.url = "github:ipetkov/crane";
     advisory-db = {
       url = "github:rustsec/advisory-db";
       flake = false;
+    };
+
+    rust-overlay = {
+      url = "github:oxalica/rust-overlay";
+      inputs = {
+        nixpkgs.follows = "nixpkgs";
+      };
     };
   };
 
@@ -26,27 +30,48 @@
     systems,
     crane,
     advisory-db,
+    rust-overlay,
   }: let
     eachSystem = nixpkgs.lib.genAttrs (import systems);
   in {
-    packages = eachSystem (system: let
-      pkgs = nixpkgs.legacyPackages.${system};
-      inherit (pkgs) lib;
-      packages = pkgs.callPackage ./nix/makePackages.nix {inherit inputs;};
-    in
-      (lib.filterAttrs (name: value: lib.isDerivation value) packages)
-      // {
-        default = packages.command-error;
-        docs = packages.command-error-docs;
-        docs-tarball = packages.command-error-docs-tarball;
+    _pkgs = eachSystem (
+      localSystem:
+        import nixpkgs {
+          inherit localSystem;
+          overlays = [
+            rust-overlay.overlays.default
 
-        # This lets us use `nix run .#cargo` to run Cargo commands without
-        # loading the entire `nix develop` shell (which includes
-        # `rust-analyzer`).
-        #
-        # Used in `.github/workflows/release.yaml`.
-        cargo = pkgs.cargo;
-      });
+            (final: prev: {
+              rustToolchain = final.pkgsBuildHost.rust-bin.stable.latest.default.override {
+                extensions = ["llvm-tools-preview"];
+              };
+
+              craneLib = (crane.mkLib final).overrideToolchain final.rustToolchain;
+            })
+          ];
+        }
+    );
+
+    packages = eachSystem (
+      system: let
+        pkgs = self._pkgs.${system};
+        inherit (pkgs) lib;
+        packages = pkgs.callPackage ./nix/makePackages.nix {inherit inputs;};
+      in
+        (lib.filterAttrs (name: value: lib.isDerivation value) packages)
+        // {
+          default = packages.command-error;
+          docs = packages.command-error-docs;
+          docs-tarball = packages.command-error-docs-tarball;
+
+          # This lets us use `nix run .#cargo` to run Cargo commands without
+          # loading the entire `nix develop` shell (which includes
+          # `rust-analyzer`).
+          #
+          # Used in `.github/workflows/release.yaml`.
+          cargo = pkgs.cargo;
+        }
+    );
 
     checks = eachSystem (system: self.packages.${system}.command-error.checks);
 
