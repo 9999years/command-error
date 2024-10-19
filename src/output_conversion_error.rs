@@ -6,13 +6,13 @@ use std::process::Command;
 #[cfg(doc)]
 use std::process::Output;
 
-#[cfg(doc)]
-use utf8_command::Utf8Output;
-
 use crate::CommandDisplay;
-
 #[cfg(doc)]
 use crate::CommandExt;
+#[cfg(feature = "miette")]
+use miette::Diagnostic;
+#[cfg(doc)]
+use utf8_command::Utf8Output;
 
 /// An error produced when attempting to convert [`Command`] [`Output`] to a custom format (such as
 /// [`Utf8Output`]).
@@ -80,6 +80,11 @@ impl Display for OutputConversionError {
         )
     }
 }
+
+impl std::error::Error for OutputConversionError {}
+
+#[cfg(feature = "miette")]
+impl Diagnostic for OutputConversionError {}
 
 #[cfg(test)]
 mod tests {

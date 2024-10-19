@@ -14,6 +14,8 @@ use crate::WaitError;
 
 #[cfg(doc)]
 use crate::CommandExt;
+#[cfg(feature = "miette")]
+use miette::Diagnostic;
 
 /// An error produced by a [`Command`] failure.
 #[derive(Debug)]
@@ -35,6 +37,18 @@ pub enum Error {
     /// An output conversion error, when [`Output`] fails to convert to a custom format as
     /// requested by methods like [`CommandExt::output_checked_utf8`].
     Conversion(OutputConversionError),
+}
+
+impl Error {
+    #[cfg(feature = "miette")]
+    fn as_inner_diagnostic(&self) -> &(dyn Diagnostic + Send + Sync + 'static) {
+        match self {
+            Error::Exec(inner) => inner,
+            Error::Wait(inner) => inner,
+            Error::Output(inner) => inner,
+            Error::Conversion(inner) => inner,
+        }
+    }
 }
 
 impl Display for Error {
@@ -73,6 +87,41 @@ impl From<OutputConversionError> for Error {
 }
 
 impl std::error::Error for Error {}
+
+#[cfg(feature = "miette")]
+impl Diagnostic for Error {
+    fn code<'a>(&'a self) -> Option<Box<dyn Display + 'a>> {
+        self.as_inner_diagnostic().code()
+    }
+
+    fn severity(&self) -> Option<miette::Severity> {
+        self.as_inner_diagnostic().severity()
+    }
+
+    fn help<'a>(&'a self) -> Option<Box<dyn Display + 'a>> {
+        self.as_inner_diagnostic().help()
+    }
+
+    fn url<'a>(&'a self) -> Option<Box<dyn Display + 'a>> {
+        self.as_inner_diagnostic().url()
+    }
+
+    fn source_code(&self) -> Option<&dyn miette::SourceCode> {
+        self.as_inner_diagnostic().source_code()
+    }
+
+    fn labels(&self) -> Option<Box<dyn Iterator<Item = miette::LabeledSpan> + '_>> {
+        self.as_inner_diagnostic().labels()
+    }
+
+    fn related<'a>(&'a self) -> Option<Box<dyn Iterator<Item = &'a dyn Diagnostic> + 'a>> {
+        self.as_inner_diagnostic().related()
+    }
+
+    fn diagnostic_source(&self) -> Option<&dyn Diagnostic> {
+        self.as_inner_diagnostic().diagnostic_source()
+    }
+}
 
 #[cfg(test)]
 mod tests {

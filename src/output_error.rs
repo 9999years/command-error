@@ -7,9 +7,10 @@ use crate::OutputLike;
 
 #[cfg(doc)]
 use crate::CommandExt;
-
 #[cfg(doc)]
 use crate::ExecError;
+#[cfg(feature = "miette")]
+use miette::Diagnostic;
 
 /// An error from a failed command, typically due to a non-zero exit status.
 ///
@@ -147,6 +148,9 @@ impl Display for OutputError {
 }
 
 impl std::error::Error for OutputError {}
+
+#[cfg(feature = "miette")]
+impl Diagnostic for OutputError {}
 
 fn write_indented(f: &mut std::fmt::Formatter<'_>, text: &str, indent: &str) -> std::fmt::Result {
     let mut lines = text.lines();

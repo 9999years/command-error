@@ -6,6 +6,8 @@ use crate::CommandDisplay;
 use crate::CommandExt;
 #[cfg(doc)]
 use crate::OutputError;
+#[cfg(feature = "miette")]
+use miette::Diagnostic;
 
 /// An error from failing to execute a command. Produced by [`CommandExt`].
 ///
@@ -56,8 +58,6 @@ impl Debug for ExecError {
 
 impl Display for ExecError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        // TODO: Should this contain an additional message like
-        // "Is `program` installed and present in your `$PATH`?"
         write!(
             f,
             "Failed to execute `{}`: {}",
@@ -68,6 +68,16 @@ impl Display for ExecError {
 }
 
 impl std::error::Error for ExecError {}
+
+#[cfg(feature = "miette")]
+impl Diagnostic for ExecError {
+    fn help<'a>(&'a self) -> Option<Box<dyn Display + 'a>> {
+        Some(Box::new(format!(
+            "Is {} installed and present on your $PATH?",
+            self.command.program_quoted()
+        )))
+    }
+}
 
 #[cfg(test)]
 mod tests {

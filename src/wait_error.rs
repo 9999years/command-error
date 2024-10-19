@@ -4,6 +4,8 @@ use std::fmt::Display;
 #[cfg(doc)]
 use crate::ChildExt;
 use crate::CommandDisplay;
+#[cfg(feature = "miette")]
+use miette::Diagnostic;
 
 /// An error from failing to wait for a command. Produced by [`ChildExt`].
 ///
@@ -61,6 +63,9 @@ impl Display for WaitError {
 }
 
 impl std::error::Error for WaitError {}
+
+#[cfg(feature = "miette")]
+impl Diagnostic for WaitError {}
 
 #[cfg(test)]
 mod tests {
