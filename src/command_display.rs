@@ -65,3 +65,9 @@ pub trait CommandDisplay: Display + DynClone {
     /// ```
     fn args(&self) -> Box<dyn Iterator<Item = Cow<'_, str>> + '_>;
 }
+
+impl Clone for Box<dyn CommandDisplay + Send + Sync> {
+    fn clone(&self) -> Self {
+        dyn_clone::clone_box(&**self)
+    }
+}
