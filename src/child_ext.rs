@@ -1,4 +1,3 @@
-use std::borrow::Borrow;
 use std::fmt::Debug;
 use std::fmt::Display;
 use std::process::Child;
@@ -234,8 +233,8 @@ impl ChildExt for ChildContext<Child> {
         E: From<Self::Error>,
     {
         self.log()?;
-        let command = dyn_clone::clone_box(self.command.borrow());
-        match self.child.wait_with_output() {
+        let (child, command) = self.into_child_and_command();
+        match child.wait_with_output() {
             Ok(output) => match output.try_into() {
                 Ok(output) => succeeded(OutputContext::new(output, command)),
                 Err(error) => {
@@ -253,8 +252,8 @@ impl ChildExt for ChildContext<Child> {
     where
         E: From<Self::Error>,
     {
-        let command = dyn_clone::clone_box(self.command.borrow());
-        match self.child.try_wait() {
+        let command = self.command_boxed().clone();
+        match self.child_mut().try_wait() {
             Ok(status) => succeeded(TryWaitContext::new(status, command)),
             Err(inner) => Err(Error::from(WaitError::new(command, inner)).into()),
         }
@@ -268,8 +267,8 @@ impl ChildExt for ChildContext<Child> {
         E: From<Self::Error>,
     {
         self.log()?;
-        let command = dyn_clone::clone_box(self.command.borrow());
-        match self.child.wait() {
+        let command = self.command_boxed().clone();
+        match self.child_mut().wait() {
             Ok(status) => succeeded(OutputContext::new(status, command)),
             Err(inner) => Err(Error::from(ExecError::new(command, inner)).into()),
         }
