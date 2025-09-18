@@ -34,6 +34,11 @@ impl<O> OutputContext<O>
 where
     O: OutputLike + Send + Sync + 'static,
 {
+    /// Construct a new [`OutputContext`].
+    pub fn new(output: O, command: Box<dyn CommandDisplay + Send + Sync>) -> Self {
+        Self { output, command }
+    }
+
     /// Get the [`OutputLike`] data contained in this context object.
     pub fn into_output(self) -> O {
         self.output
@@ -61,12 +66,31 @@ where
         self.command
     }
 
+    /// Get the output and command contained in this context object.
+    ///
+    /// Unlike [`OutputContext::into_output`] and [`OutputContext::into_command`], this lets you
+    /// extract both fields.
+    pub fn into_output_and_command(self) -> (O, Box<dyn CommandDisplay>) {
+        (self.output, self.command)
+    }
+
     /// Construct an error that indicates this command failed, containing information about the
     /// command and its output.
     ///
     /// See [`CommandExt`] for examples of the error format.
+    ///
+    /// This is a thin wrapper around [`OutputContext::output_error`].
     pub fn error(self) -> Error {
-        Error::from(OutputError::new(self.command, Box::new(self.output)))
+        Error::from(self.output_error())
+    }
+
+    /// Construct an error that indicates this command failed, containing information about the
+    /// command and its output.
+    ///
+    /// This is like [`OutputContext::error`], but it returns the inner [`OutputError`] directly,
+    /// rather than wrapping it in an [`Error`].
+    pub fn output_error(self) -> OutputError {
+        OutputError::new(self.command, Box::new(self.output))
     }
 
     /// Construct an error that indicates this command failed, containing information about the
@@ -86,7 +110,7 @@ where
     where
         E: Debug + Display + Send + Sync + 'static,
     {
-        let ret = OutputError::new(self.command, Box::new(self.output));
+        let ret = self.output_error();
         Error::from(match message {
             Some(message) => ret.with_message(Box::new(message)),
             None => ret,
