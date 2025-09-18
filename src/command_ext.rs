@@ -515,21 +515,14 @@ impl CommandExt for Command {
         let displayed: Utf8ProgramAndArgs = (&*self).into();
         match self.output() {
             Ok(output) => match output.try_into() {
-                Ok(output) => succeeded(OutputContext {
-                    output,
-                    command: Box::new(displayed),
-                }),
-                Err(error) => Err(Error::from(OutputConversionError {
-                    command: Box::new(displayed),
-                    inner: Box::new(error),
-                })
+                Ok(output) => succeeded(OutputContext::new(output, Box::new(displayed))),
+                Err(error) => Err(Error::from(OutputConversionError::new(
+                    Box::new(displayed),
+                    Box::new(error),
+                ))
                 .into()),
             },
-            Err(inner) => Err(Error::from(ExecError {
-                command: Box::new(displayed),
-                inner,
-            })
-            .into()),
+            Err(inner) => Err(Error::from(ExecError::new(Box::new(displayed), inner)).into()),
         }
     }
 
@@ -544,15 +537,8 @@ impl CommandExt for Command {
         let displayed: Utf8ProgramAndArgs = (&*self).into();
         let displayed = Box::new(displayed);
         match self.status() {
-            Ok(status) => succeeded(OutputContext {
-                output: status,
-                command: displayed,
-            }),
-            Err(inner) => Err(Error::from(ExecError {
-                command: displayed,
-                inner,
-            })
-            .into()),
+            Ok(status) => succeeded(OutputContext::new(status, displayed)),
+            Err(inner) => Err(Error::from(ExecError::new(displayed, inner)).into()),
         }
     }
 
@@ -563,10 +549,7 @@ impl CommandExt for Command {
                 child,
                 command: Box::new(displayed),
             }),
-            Err(inner) => Err(Error::from(ExecError {
-                command: Box::new(displayed),
-                inner,
-            })),
+            Err(inner) => Err(Error::from(ExecError::new(Box::new(displayed), inner))),
         }
     }
 }

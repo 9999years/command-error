@@ -59,11 +59,11 @@ use miette::Diagnostic;
 /// ```
 pub struct OutputError {
     /// The program and arguments that ran.
-    pub(crate) command: Box<dyn CommandDisplay + Send + Sync>,
+    command: Box<dyn CommandDisplay + Send + Sync>,
     /// The program's output and exit code.
-    pub(crate) output: Box<dyn OutputLike + Send + Sync>,
+    output: Box<dyn OutputLike + Send + Sync>,
     /// A user-defined error message.
-    pub(crate) user_error: Option<Box<dyn DebugDisplay + Send + Sync>>,
+    user_error: Option<Box<dyn DebugDisplay + Send + Sync>>,
 }
 
 impl OutputError {

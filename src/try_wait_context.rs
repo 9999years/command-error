@@ -37,10 +37,8 @@ impl TryWaitContext {
 
     /// If the [`ExitStatus`] is present, get an [`OutputContext`] for constructing error messages.
     pub fn into_output_context(self) -> Option<OutputContext<ExitStatus>> {
-        self.status.map(|status| OutputContext {
-            output: status,
-            command: self.command,
-        })
+        self.status
+            .map(|status| OutputContext::new(status, self.command))
     }
 }
 

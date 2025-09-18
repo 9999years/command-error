@@ -26,8 +26,8 @@ use crate::OutputLike;
 /// [`stdout`][OutputLike::stdout] and [`stderr`][OutputLike::stderr] return empty strings), this
 /// is also used as context for [`status`][`CommandExt::status_checked`] calls.
 pub struct OutputContext<O> {
-    pub(crate) output: O,
-    pub(crate) command: Box<dyn CommandDisplay + Send + Sync>,
+    output: O,
+    command: Box<dyn CommandDisplay + Send + Sync>,
 }
 
 impl<O> OutputContext<O>

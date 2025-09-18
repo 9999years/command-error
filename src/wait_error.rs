@@ -31,8 +31,8 @@ use miette::Diagnostic;
 /// );
 /// ```
 pub struct WaitError {
-    pub(crate) command: Box<dyn CommandDisplay + Send + Sync>,
-    pub(crate) inner: std::io::Error,
+    command: Box<dyn CommandDisplay + Send + Sync>,
+    inner: std::io::Error,
 }
 
 impl WaitError {
