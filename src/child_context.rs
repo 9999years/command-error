@@ -39,7 +39,7 @@ impl<C> ChildContext<C> {
     }
 
     /// Get a reference to the command which produced this child process.
-    pub fn command(&self) -> &(dyn CommandDisplay + Send + Sync) {
+    pub fn command(&self) -> &(dyn CommandDisplay + Send + Sync + 'static) {
         self.command.borrow()
     }
 }
