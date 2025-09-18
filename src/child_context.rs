@@ -23,6 +23,11 @@ pub struct ChildContext<C> {
 }
 
 impl<C> ChildContext<C> {
+    /// Construct a new [`ChildContext`].
+    pub fn new(child: C, command: Box<dyn CommandDisplay + Send + Sync>) -> Self {
+        Self { child, command }
+    }
+
     /// Get the child process.
     pub fn into_child(self) -> C {
         self.child

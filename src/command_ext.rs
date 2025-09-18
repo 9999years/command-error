@@ -545,10 +545,7 @@ impl CommandExt for Command {
     fn spawn_checked(&mut self) -> Result<Self::Child, Self::Error> {
         let displayed: Utf8ProgramAndArgs = (&*self).into();
         match self.spawn() {
-            Ok(child) => Ok(ChildContext {
-                child,
-                command: Box::new(displayed),
-            }),
+            Ok(child) => Ok(ChildContext::new(child, Box::new(displayed))),
             Err(inner) => Err(Error::from(ExecError::new(Box::new(displayed), inner))),
         }
     }
