@@ -18,8 +18,8 @@ use crate::OutputContext;
 ///
 /// See: [`OutputContext`].
 pub struct ChildContext<C> {
-    pub(crate) child: C,
-    pub(crate) command: Box<dyn CommandDisplay + Send + Sync>,
+    child: C,
+    command: Box<dyn CommandDisplay + Send + Sync>,
 }
 
 impl<C> ChildContext<C> {
@@ -46,6 +46,19 @@ impl<C> ChildContext<C> {
     /// Get a reference to the command which produced this child process.
     pub fn command(&self) -> &(dyn CommandDisplay + Send + Sync + 'static) {
         self.command.borrow()
+    }
+
+    /// Get a reference to the [`Box`] containing the command which produced this child process.
+    ///
+    /// This value, unlike the return value from [`ChildContext::command`], can be [`Clone`]d.
+    #[expect(clippy::borrowed_box)]
+    pub fn command_boxed(&self) -> &Box<dyn CommandDisplay + Send + Sync> {
+        &self.command
+    }
+
+    /// Get the child and command which produced the child.
+    pub fn into_child_and_command(self) -> (C, Box<dyn CommandDisplay + Send + Sync>) {
+        (self.child, self.command)
     }
 }
 
