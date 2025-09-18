@@ -47,21 +47,14 @@ impl CommandExt for StdCommandWrap {
 
         match child.wait_with_output() {
             Ok(output) => match output.try_into() {
-                Ok(output) => succeeded(OutputContext {
-                    output,
-                    command: Box::new(displayed),
-                }),
-                Err(error) => Err(Error::from(OutputConversionError {
-                    command: Box::new(displayed),
-                    inner: Box::new(error),
-                })
+                Ok(output) => succeeded(OutputContext::new(output, Box::new(displayed))),
+                Err(error) => Err(Error::from(OutputConversionError::new(
+                    Box::new(displayed),
+                    Box::new(error),
+                ))
                 .into()),
             },
-            Err(inner) => Err(Error::from(ExecError {
-                command: Box::new(displayed),
-                inner,
-            })
-            .into()),
+            Err(inner) => Err(Error::from(ExecError::new(Box::new(displayed), inner)).into()),
         }
     }
 
@@ -82,15 +75,8 @@ impl CommandExt for StdCommandWrap {
         };
 
         match child.wait() {
-            Ok(status) => succeeded(OutputContext {
-                output: status,
-                command: Box::new(displayed),
-            }),
-            Err(inner) => Err(Error::from(ExecError {
-                command: Box::new(displayed),
-                inner,
-            })
-            .into()),
+            Ok(status) => succeeded(OutputContext::new(status, Box::new(displayed))),
+            Err(inner) => Err(Error::from(ExecError::new(Box::new(displayed), inner)).into()),
         }
     }
 
@@ -101,10 +87,7 @@ impl CommandExt for StdCommandWrap {
                 child,
                 command: Box::new(displayed),
             }),
-            Err(inner) => Err(Error::from(ExecError {
-                command: Box::new(displayed),
-                inner,
-            })),
+            Err(inner) => Err(Error::from(ExecError::new(Box::new(displayed), inner))),
         }
     }
 }

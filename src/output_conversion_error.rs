@@ -47,8 +47,8 @@ use utf8_command::Utf8Output;
 /// );
 /// ```
 pub struct OutputConversionError {
-    pub(crate) command: Box<dyn CommandDisplay + Send + Sync>,
-    pub(crate) inner: Box<dyn Display + Send + Sync>,
+    command: Box<dyn CommandDisplay + Send + Sync>,
+    inner: Box<dyn Display + Send + Sync>,
 }
 
 impl OutputConversionError {

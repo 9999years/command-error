@@ -45,6 +45,8 @@ pub trait ChildExt: Sized {
         O: Debug,
         O: OutputLike,
         O: 'static,
+        O: Send,
+        O: Sync,
         O: TryFrom<Output>,
         <O as TryFrom<Output>>::Error: Display + Send + Sync,
         E: From<Self::Error>;
@@ -225,6 +227,8 @@ impl ChildExt for ChildContext<Child> {
         O: Debug,
         O: OutputLike,
         O: 'static,
+        O: Send,
+        O: Sync,
         O: TryFrom<Output>,
         <O as TryFrom<Output>>::Error: Display + Send + Sync,
         E: From<Self::Error>,
@@ -233,14 +237,12 @@ impl ChildExt for ChildContext<Child> {
         let command = dyn_clone::clone_box(self.command.borrow());
         match self.child.wait_with_output() {
             Ok(output) => match output.try_into() {
-                Ok(output) => succeeded(OutputContext { output, command }),
-                Err(error) => Err(Error::from(OutputConversionError {
-                    command,
-                    inner: Box::new(error),
-                })
-                .into()),
+                Ok(output) => succeeded(OutputContext::new(output, command)),
+                Err(error) => {
+                    Err(Error::from(OutputConversionError::new(command, Box::new(error))).into())
+                }
             },
-            Err(inner) => Err(Error::from(ExecError { command, inner }).into()),
+            Err(inner) => Err(Error::from(ExecError::new(command, inner)).into()),
         }
     }
 
@@ -254,7 +256,7 @@ impl ChildExt for ChildContext<Child> {
         let command = dyn_clone::clone_box(self.command.borrow());
         match self.child.try_wait() {
             Ok(status) => succeeded(TryWaitContext { status, command }),
-            Err(inner) => Err(Error::from(WaitError { inner, command }).into()),
+            Err(inner) => Err(Error::from(WaitError::new(command, inner)).into()),
         }
     }
 
@@ -268,18 +270,15 @@ impl ChildExt for ChildContext<Child> {
         self.log()?;
         let command = dyn_clone::clone_box(self.command.borrow());
         match self.child.wait() {
-            Ok(status) => succeeded(OutputContext {
-                output: status,
-                command,
-            }),
-            Err(inner) => Err(Error::from(ExecError { command, inner }).into()),
+            Ok(status) => succeeded(OutputContext::new(status, command)),
+            Err(inner) => Err(Error::from(ExecError::new(command, inner)).into()),
         }
     }
 
     fn log(&self) -> Result<(), Self::Error> {
         #[cfg(feature = "tracing")]
         {
-            tracing::debug!(command = %self.command, "Executing command");
+            tracing::debug!(command = %self.command(), "Executing command");
         }
         Ok(())
     }
