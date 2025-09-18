@@ -255,7 +255,7 @@ impl ChildExt for ChildContext<Child> {
     {
         let command = dyn_clone::clone_box(self.command.borrow());
         match self.child.try_wait() {
-            Ok(status) => succeeded(TryWaitContext { status, command }),
+            Ok(status) => succeeded(TryWaitContext::new(status, command)),
             Err(inner) => Err(Error::from(WaitError::new(command, inner)).into()),
         }
     }

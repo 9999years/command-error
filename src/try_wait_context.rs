@@ -14,11 +14,16 @@ use crate::OutputContext;
 ///
 /// See also: [`OutputContext`].
 pub struct TryWaitContext {
-    pub(crate) status: Option<ExitStatus>,
-    pub(crate) command: Box<dyn CommandDisplay + Send + Sync>,
+    status: Option<ExitStatus>,
+    command: Box<dyn CommandDisplay + Send + Sync>,
 }
 
 impl TryWaitContext {
+    /// Construct a new [`TryWaitContext`].
+    pub fn new(status: Option<ExitStatus>, command: Box<dyn CommandDisplay + Send + Sync>) -> Self {
+        Self { status, command }
+    }
+
     /// Get the result of the [`Child::try_wait`] call.
     pub fn status(&self) -> Option<ExitStatus> {
         self.status
