@@ -110,3 +110,9 @@ pub use child_ext::ChildExt;
 
 #[cfg(feature = "process-wrap")]
 mod process_wrap;
+
+mod async_child_ext;
+mod async_command_ext;
+
+pub use async_child_ext::AsyncChildExt;
+pub use async_command_ext::AsyncCommandExt;
